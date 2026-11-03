@@ -1,0 +1,26 @@
+/**
+ * Java wrapper of the handheld's built-in barcode scanner (CM60 module, Newland "host decode"
+ * SDK, package com.dawn.decoderapijni). Copied from the vendor's sample; keep SoftEngine as is.
+ *
+ * The native decoder, libNlscanHostDecodeJni.so, is part of the handheld's system image, so this
+ * module ships no jniLibs. On any other phone the library is missing and the app reports the
+ * scanner as unavailable (see com.maesapp.scanner.ScannerEngine).
+ */
+plugins {
+    id "com.android.library"
+}
+
+android {
+    namespace "com.hc.libscan"
+    compileSdk rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdk rootProject.ext.minSdkVersion
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

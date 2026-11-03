@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint *)",
+      "Bash(npm test *)",
+      "Bash(npm run android *)",
+      "Bash(npm start *)",
+      "Bash(npm ls *)",
+      "Bash(npm view *)",
+      "Bash(npm outdated *)",
+      "Bash(npx tsc *)",
+      "Bash(npx jest *)",
+      "Bash(npx eslint *)",
+      "Bash(npx prettier *)",
+      "Bash(npx react-native *)",
+      "Bash(./gradlew *)",
+      "Bash(adb devices *)",
+      "Bash(adb logcat *)",
+      "Bash(adb reverse *)",
+      "Bash(adb wait-for-device *)",
+      "Bash(adb exec-out screencap *)",
+      "Bash(adb shell getprop *)",
+      "Bash(adb shell pidof *)",
+      "Bash(adb shell am start *)",
+      "Bash(adb shell input *)",
+      "Bash(curl -s http://localhost:8081/status *)"
+    ],
+    "ask": [
+      "Bash(npm install *)",
+      "Bash(npm uninstall *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(./gradlew assembleRelease *)",
+      "Bash(./gradlew bundleRelease *)",
+      "Bash(adb uninstall *)",
+      "Bash(adb shell pm clear *)"
+    ],
+    "deny": [
+      "Read(**/*.pem)",
+      "Read(**/*.p12)",
+      "Read(**/*.jks)",
+      "Read(**/*.keystore)",
+      "Read(**/keystore.properties)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.gradle/gradle.properties)",
+      "Bash(ssh *16.16.235.235*)",
+      "Bash(scp *16.16.235.235*)",
+      "Bash(rsync *16.16.235.235*)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-edited-file.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

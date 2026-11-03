@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same as the JS SplashScreen background, so the window never flashes a different colour before React renders. -->
+    <color name="splash_background">#FFFFFF</color>
+    <!-- Adaptive launcher icon (mipmap-anydpi-v26): white behind the logo foreground. -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>
