@@ -373,7 +373,9 @@ internal class ScannerEngine(private val context: Context, private val listener:
           } catch (e: CharacterCodingException) {
             String(bytes, Charsets.ISO_8859_1)
           }
-      return text.trimEnd('\r', '\n', '\u0000')
+      // The decoder's length can include the C string terminator ("1353135\u0000"), and a
+      // suffix may add CR/LF: no control character ever leaves here (Odoo rejects NUL).
+      return text.filterNot { it < ' ' || it == '\u007f' }.trim()
     }
 
     private fun endReason(eventCode: Int) =

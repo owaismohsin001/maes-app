@@ -24,8 +24,12 @@ export const REPEAT_WINDOW_MS = 1200;
 type Options = {
   /** Read continuously while true (the scanner screen is shown). */
   live: boolean;
-  /** A code was accepted: beeped, and to be sent on. */
-  onCode: (code: string) => void;
+  /**
+   * A code was accepted: beeped, and to be sent on. Returning `true` holds
+   * live reading until `resume()` is called (Odoo has answered the code), so
+   * one label gives one scan and the next read never races the answer.
+   */
+  onCode: (code: string) => boolean | void;
   /** The same label read again within `REPEAT_WINDOW_MS`: not sent as a new item. */
   onRepeat?: (code: string) => void;
   /** A problem to show outside live reading (side button, test scans), or that needs a dialog. */
@@ -40,6 +44,8 @@ export type LiveScanning = {
   problem: ScanProblem | null;
   /** Start live reading again after a problem. */
   restart: () => void;
+  /** The held read's answer came (or was given up on): the next read starts. */
+  resume: () => void;
 };
 
 /**
@@ -68,6 +74,7 @@ export function useLiveScanning({
   notifyRef.current = notify;
 
   const failuresRef = useRef(0);
+  const heldRef = useRef(false);
   const lastReadRef = useRef<{ code: string; at: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scanRef = useRef<() => Promise<void>>(async () => {});
@@ -111,7 +118,10 @@ export function useLiveScanning({
       lastReadRef.current = { code, at: now };
       if (!last || last.code !== code || now - last.at >= REPEAT_WINDOW_MS) {
         feedbackRef.current();
-        onCodeRef.current(code);
+        if (onCodeRef.current(code) === true) {
+          heldRef.current = true; // `resume()` starts the next read
+          return;
+        }
       } else {
         onRepeatRef.current?.(code);
       }
@@ -119,6 +129,16 @@ export function useLiveScanning({
     },
     [scanLater],
   );
+
+  const resume = useCallback(() => {
+    if (!heldRef.current) {
+      return;
+    }
+    heldRef.current = false;
+    if (liveRef.current && !problemRef.current) {
+      scanLater(RESTART_AFTER_READ_MS);
+    }
+  }, [scanLater]);
 
   const handleProblem = useCallback(
     (reason: ScanProblem) => {
@@ -153,6 +173,7 @@ export function useLiveScanning({
 
   const begin = useCallback(() => {
     failuresRef.current = 0;
+    heldRef.current = false;
     lastReadRef.current = null;
     problemRef.current = null;
     setProblem(null);
@@ -166,6 +187,7 @@ export function useLiveScanning({
       begin();
     } else if (wasLiveRef.current) {
       clearTimer();
+      heldRef.current = false;
       stopRef.current();
     }
     wasLiveRef.current = live;
@@ -195,5 +217,6 @@ export function useLiveScanning({
     starting: live && !started && problem === null,
     problem,
     restart: begin,
+    resume,
   };
 }

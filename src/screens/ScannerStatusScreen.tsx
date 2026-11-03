@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { APP_VERSION } from '../config';
 import { TranslationKey, t } from '../i18n';
 import {
   CameraPermission,
@@ -167,6 +168,14 @@ function ScannerStatusScreen({ scanner, onClose }: Props) {
           </SectionCard>
 
           <DetailCard title={t('scanner.section.device')}>
+            <DetailRow
+              testID="scanner-app-version"
+              icon="tag"
+              label={t('scanner.appVersion')}
+              value={APP_VERSION}
+              mono
+              half
+            />
             <DetailRow
               icon="cpu"
               label={t('scanner.firmware')}

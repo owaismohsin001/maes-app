@@ -17,3 +17,9 @@ export const ODOO_ORIGIN = ODOO_TEST_ORIGIN;
  * signing in).
  */
 export const ODOO_WEB_URL = `${ODOO_ORIGIN}/odoo`;
+
+/**
+ * Shown on the scanner settings screen so a screenshot tells which build the
+ * handheld runs. Keep in step with `versionName` in android/app/build.gradle.
+ */
+export const APP_VERSION = '1.4';

@@ -16,7 +16,7 @@ import type {
 } from 'react-native-webview/lib/WebViewTypes';
 import LoadingView from '../components/LoadingView';
 import ScannerOverlay from '../components/ScannerOverlay';
-import { ODOO_ORIGIN, ODOO_WEB_URL } from '../config';
+import { ODOO_WEB_URL } from '../config';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { useTheme } from '../hooks/useTheme';
 import { useWebViewBackHandler } from '../hooks/useWebViewBackHandler';
@@ -30,10 +30,12 @@ import {
   parsePageHistoryMessage,
 } from '../utils/odooPageScript';
 import { nativeScanner } from '../scanner/scanner';
+import { useScanLog } from '../scanner/useScanLog';
 import {
   ODOO_SCANNER_PAGE_SCRIPT,
   isOpenScannerMessage,
   odooBarcodeScript,
+  parseBarcodeResultMessage,
   parsePageUrlMessage,
 } from '../utils/odooBarcodeScript';
 import { isAuthPage, isBarcodeAppUrl, isOdooUrl } from '../utils/odooUrl';
@@ -117,6 +119,7 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
   }, [markReady]);
 
   const history = useWebViewBackHandler(webViewRef, t('web.exitHint'));
+  const scanLog = useScanLog();
 
   // Where the page is: from load events and the page's own reports (Odoo
   // navigates in-page, without loads).
@@ -225,30 +228,28 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
       }
       if (isOpenScannerMessage(data)) {
         setScannerOpen(true);
+        return;
+      }
+      const result = parseBarcodeResultMessage(data);
+      if (result) {
+        scanLog.resolve(result);
       }
     },
-    [markReady, history],
+    [markReady, history, scanLog],
   );
 
-  // A code read on Odoo's own screens (side button) goes to the page as if a
-  // USB scanner had typed it.
-  const deliverCode = useCallback((code: string) => {
-    webViewRef.current?.injectJavaScript(odooBarcodeScript(code));
-  }, []);
-
-  // The app's Barcode screens hand over to the web client: a record or wizard
-  // they can't show, or the login page when the session has ended (Odoo
-  // brings the user back to the Barcode app after signing in).
-  const openOdooPath = useCallback((path: string) => {
-    webViewRef.current?.injectJavaScript(
-      `window.location.assign(${JSON.stringify(
-        `${ODOO_ORIGIN}${path}`,
-      )});true;`,
-    );
-  }, []);
-  const signIn = useCallback(
-    () => openOdooPath('/web/login?redirect=%2Fodoo%2Fbarcode'),
-    [openOdooPath],
+  // A code read by the handheld goes to the page as if a USB scanner had
+  // typed it: into Odoo's Barcode app while it is open (the scanner screen
+  // covers it and shows Odoo's answer), or into whatever Odoo screen is open
+  // (side button). Odoo's notifications about it come back through
+  // `onMessage` and resolve the log entry.
+  const deliverCode = useCallback(
+    (code: string) => {
+      const id = scanLog.add(code);
+      webViewRef.current?.injectJavaScript(odooBarcodeScript(code, id));
+      return id;
+    },
+    [scanLog],
   );
 
   // A failed load shows the error screen: theme colours, and the splash may go.
@@ -319,8 +320,7 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
         leaving={leavingBarcode}
         onBack={leaveBarcodeApp}
         onCode={deliverCode}
-        onOpenOdoo={openOdooPath}
-        onSignIn={signIn}
+        entries={scanLog.entries}
       />
     </View>
   );
