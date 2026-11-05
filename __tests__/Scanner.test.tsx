@@ -12,11 +12,7 @@ import { ODOO_ORIGIN } from '../src/config';
 import NativeMaesScanner from '../src/native/NativeMaesScanner';
 import * as scannerModule from '../src/scanner/scanner';
 import type { CameraPermission } from '../src/scanner/scanner';
-import {
-  MAX_FAILURES,
-  REPEAT_WINDOW_MS,
-  RESTART_AFTER_READ_MS,
-} from '../src/scanner/useLiveScanning';
+import { RESTART_AFTER_READ_MS } from '../src/scanner/useLiveScanning';
 import { SCANNER_EXIT_MS } from '../src/components/ScannerOverlay';
 import OdooWebViewScreen, {
   LEAVE_BARCODE_FALLBACK_MS,
@@ -105,7 +101,9 @@ const injected = () =>
 /** The barcode scripts typed into the page: their code and scan id. */
 const typed = () =>
   injected()
-    .map(script => /\}\)\("((?:[^"\\]|\\.)*)", "([^"]*)"\);\s*true;$/.exec(script))
+    .map(script =>
+      /\}\)\("((?:[^"\\]|\\.)*)", "([^"]*)"\);\s*true;$/.exec(script),
+    )
     .filter((m): m is RegExpExecArray => m !== null)
     .map(m => ({ code: m[1], id: m[2] }));
 
@@ -130,10 +128,16 @@ async function mount() {
   await settle();
 }
 
-/** Opens the Barcode app and lets the first read start. */
+/** The handheld's scan button: one press, one read. */
+const scanKey = async () => {
+  await emit('onScanKey');
+  await started();
+};
+
+/** Opens the Barcode app and presses the scan button once. */
 async function openBarcodeApp() {
   await navigate(BARCODE_APP);
-  await started();
+  await scanKey();
 }
 
 /** Lets the scanner screen animate away. */
@@ -157,15 +161,18 @@ test('nothing covers Odoo outside the Barcode app; the scanner is powered up ear
   expect(scanner.startScan).not.toHaveBeenCalled();
 });
 
-test('opening the Barcode app: the scanner screen covers it and reading starts by itself', async () => {
+test('opening the Barcode app: the scanner screen covers it; nothing is read until the scan button', async () => {
   await navigate(BARCODE_APP);
   expect(shown('scanner-overlay')).toBe(true);
-  expect(scanner.startScan).toHaveBeenCalledTimes(1);
-  expect(shown('scanner-loading')).toBe(true);
-
-  await started();
   expect(rendered()).toContain('Barcode scanner');
   expect(rendered()).toContain('Scanned codes appear here.');
+  expect(rendered()).toContain('Press the scan button');
+
+  await advance(10000);
+  expect(scanner.startScan).not.toHaveBeenCalled(); // no continuous reading
+
+  await scanKey();
+  expect(scanner.startScan).toHaveBeenCalledTimes(1);
   expect(injected()).toHaveLength(0); // nothing re-implemented: Odoo's page is the app
 });
 
@@ -174,7 +181,7 @@ test('the URL reported by the page counts too (Odoo navigates in-page)', async (
   expect(shown('scanner-overlay')).toBe(true);
 });
 
-test("a read is typed into Odoo's page with a beep; the next read waits for Odoo's answer", async () => {
+test("one press: the read is typed into Odoo's page with a beep, then the scanner stops", async () => {
   await openBarcodeApp();
   await decoded('TEST-0001');
 
@@ -183,67 +190,55 @@ test("a read is typed into Odoo's page with a beep; the next read waits for Odoo
   expect(rendered()).toContain('TEST-0001');
   expect(rendered()).toContain('Sending to Odoo…');
 
-  // Held: no second read while Odoo is still answering.
-  await advance(RESTART_AFTER_READ_MS * 4);
-  expect(scanner.startScan).toHaveBeenCalledTimes(1);
-
   await answer('warning', 'No product corresponding to barcode');
   expect(rendered()).toContain('No product corresponding to barcode');
-  await advance(RESTART_AFTER_READ_MS);
+
+  // No next read by itself: only another press.
+  await advance(10000);
+  expect(scanner.startScan).toHaveBeenCalledTimes(1);
+  await scanKey();
   expect(scanner.startScan).toHaveBeenCalledTimes(2);
 });
 
-test('a read Odoo never answers is given up on, and reading goes on', async () => {
+test('a read Odoo never answers is given up on; still no read without a press', async () => {
   await openBarcodeApp();
   await decoded('TEST-0001');
   await advance(BARCODE_RESULT_DELAY_MS + 2500);
   expect(rendered()).toContain('Sent to Odoo');
 
-  await advance(RESTART_AFTER_READ_MS);
-  expect(scanner.startScan).toHaveBeenCalledTimes(2);
+  await advance(10000);
+  expect(scanner.startScan).toHaveBeenCalledTimes(1);
 });
 
-test('the same label still under the scanner is not sent again; a new one is', async () => {
+test('each press is one scan — the same label pressed again counts again', async () => {
   await openBarcodeApp();
   await decoded('TEST-0001');
   await answer('ok', '');
-  await advance(RESTART_AFTER_READ_MS);
-  await decoded('TEST-0001'); // same label, moments later
-  expect(typed()).toHaveLength(1);
-  expect(scanner.feedback).toHaveBeenCalledTimes(1);
-  await advance(RESTART_AFTER_READ_MS); // a repeat read is not held
 
-  await decoded('TEST-0002');
-  expect(typed()).toHaveLength(2);
-  await answer('ok', '');
-  await advance(RESTART_AFTER_READ_MS);
-
-  // The same code again after a real pause is a second item.
-  await advance(REPEAT_WINDOW_MS);
-  await decoded('TEST-0002');
-  expect(typed()).toHaveLength(3);
+  await scanKey();
+  await decoded('TEST-0001'); // a second item with the same label
+  expect(typed().map(s => s.code)).toEqual(['TEST-0001', 'TEST-0001']);
+  expect(scanner.feedback).toHaveBeenCalledTimes(2);
 });
 
-test('a timeout just starts the next read, without a message', async () => {
+test('a press that finds nothing just ends: no new read, no stuck error', async () => {
   await openBarcodeApp();
   await ended('timeout');
-  await advance(0);
+  await advance(10000);
 
-  expect(scanner.startScan).toHaveBeenCalledTimes(2);
+  expect(scanner.startScan).toHaveBeenCalledTimes(1);
   expect(shown('scanner-retry')).toBe(false);
 });
 
-test('repeated failures stop reading with a message; Try again starts over', async () => {
+test('a failed read leaves the screen usable: the next press reads again', async () => {
   await openBarcodeApp();
-  for (let i = 0; i < MAX_FAILURES; i++) {
-    await ended('error');
-    await advance(1000);
-  }
-  expect(scanner.startScan).toHaveBeenCalledTimes(MAX_FAILURES);
-  expect(rendered()).toContain('Scanning failed');
+  await ended('error');
+  await advance(10000);
+  expect(scanner.startScan).toHaveBeenCalledTimes(1);
+  expect(shown('scanner-retry')).toBe(false);
 
-  await press('scanner-retry');
-  expect(scanner.startScan).toHaveBeenCalledTimes(MAX_FAILURES + 1);
+  await scanKey();
+  expect(scanner.startScan).toHaveBeenCalledTimes(2);
 });
 
 test('Android back leaves the Barcode app: the scanner screen stays until Odoo is out', async () => {
@@ -306,10 +301,10 @@ test("if history can't leave the Barcode app, Odoo's start page is loaded", asyn
   );
 });
 
-test("Odoo's own scan buttons open the scanner screen", async () => {
+test("Odoo's own scan buttons open the scanner screen (reading waits for the scan button)", async () => {
   await message({ type: OPEN_SCANNER_MESSAGE });
   expect(shown('scanner-overlay')).toBe(true);
-  expect(scanner.startScan).toHaveBeenCalledTimes(1);
+  expect(scanner.startScan).not.toHaveBeenCalled();
 });
 
 test('leaving the Barcode app closes the scanner screen and stops reading', async () => {

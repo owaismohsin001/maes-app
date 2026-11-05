@@ -20,7 +20,7 @@ const en = {
   'scanner.stop': 'Stop scanning',
   'scanner.screenTitle': 'Barcode scanner',
   'scanner.aim':
-    'Point the scanner at a barcode. Every code goes straight to Odoo.',
+    'Press the scan button and point at a barcode. Every code goes straight to Odoo.',
   'scanner.status': 'Status',
   'scanner.settings': 'Scanner settings',
   'scanner.recent': 'Recent scans',
@@ -340,7 +340,7 @@ const nl: Record<TranslationKey, string> = {
   'scanner.stop': 'Scannen stoppen',
   'scanner.screenTitle': 'Barcodescanner',
   'scanner.aim':
-    'Richt de scanner op een barcode. Elke code gaat meteen naar Odoo.',
+    'Druk op de scanknop en richt op een barcode. Elke code gaat meteen naar Odoo.',
   'scanner.status': 'Status',
   'scanner.settings': 'Scannerinstellingen',
   'scanner.recent': 'Recente scans',

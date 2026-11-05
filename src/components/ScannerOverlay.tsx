@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -32,6 +32,14 @@ type Props = {
   /** The codes sent to Odoo and its answers, newest first. */
   entries: ScanEntry[];
 };
+
+/**
+ * Decided with the user (2026-11-05): no continuous reading. The scanner only
+ * reads when the handheld's scan button is pressed â€” one press, one read (until
+ * a code or the engine's 8 s timeout), then it stops. Continuous reading kept
+ * the light and camera on the whole time the screen was open.
+ */
+export const CONTINUOUS_READING = false;
 
 /** Fade/slide in and out, so the screen doesn't jump over Odoo's. */
 export const SCANNER_ENTER_MS = 240;
@@ -100,10 +108,23 @@ function ScannerOverlay({
     }
   }, []);
   const { scanner, starting, problem, restart, resume } = useLiveScanning({
-    live: open && !statusOpen && !leaving,
+    live: CONTINUOUS_READING && open && !statusOpen && !leaving,
     onCode: deliver,
     notify,
   });
+
+  // A button read still running when the screen closes (or starts leaving)
+  // is cancelled, so the light goes off and no late code lands on the page.
+  const active = open && !leaving;
+  const wasActiveRef = useRef(active);
+  const stopRef = useRef(scanner.stop);
+  stopRef.current = scanner.stop;
+  useEffect(() => {
+    if (!CONTINUOUS_READING && wasActiveRef.current && !active) {
+      stopRef.current();
+    }
+    wasActiveRef.current = active;
+  }, [active]);
 
   // Odoo answered the held read (or the log gave up waiting): read on.
   useEffect(() => {
@@ -157,7 +178,7 @@ function ScannerOverlay({
     }
   }, [open]);
 
-  // Android back: status screen → scanner screen → out of the Barcode app.
+  // Android back: status screen â†’ scanner screen â†’ out of the Barcode app.
   // Registered while open, so it runs before the WebView's.
   useEffect(() => {
     if (!open) {

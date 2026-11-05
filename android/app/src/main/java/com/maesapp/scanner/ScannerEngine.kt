@@ -15,9 +15,6 @@ import android.os.VibratorManager
 import android.util.Log
 import com.dawn.decoderapijni.SoftEngine
 import com.hc.libscan.R
-import java.nio.ByteBuffer
-import java.nio.charset.CharacterCodingException
-import java.nio.charset.CodingErrorAction
 
 /**
  * The handheld's built-in scanner (CM60 module) through the vendor SDK in `:libscan`.
@@ -218,6 +215,26 @@ internal class ScannerEngine(private val context: Context, private val listener:
     return state != State.UNAVAILABLE
   }
 
+  /**
+   * The engine's factory default leaves the check digit off EAN/UPC/ITF-14 reads
+   * (`TrsmtChkChar` = 0 in its `CodeSettings`, read from the handheld's
+   * NlscanDecodeSettings.db, 2026-11-05): an EAN-13 label `8050612420989` came out
+   * as `805061242098`, which Odoo can never match — it stores the full GTIN. The
+   * check digit is part of these codes, so the engine must send it. Set on every
+   * open: cheap, and it survives the vendor app or a reset changing it back.
+   */
+  private fun sendCheckDigits(engine: SoftEngine) {
+    for (symbology in CHECK_DIGIT_SYMBOLOGIES) {
+      val result = runCatching { engine.ScanSet(symbology, "TrsmtChkChar", "1") }.getOrDefault(-1)
+      val now = runCatching { engine.ScanGet(symbology, "TrsmtChkChar") }.getOrNull()
+      if (result < 0 || now?.trim() != "1") {
+        Log.w(TAG, "Check digit for $symbology not enabled (ScanSet=$result, now=$now)")
+      } else {
+        Log.i(TAG, "Check digit for $symbology: on")
+      }
+    }
+  }
+
   private fun open(): Boolean {
     if (!libraryLoaded()) {
       return false
@@ -245,6 +262,7 @@ internal class ScannerEngine(private val context: Context, private val listener:
         decodeVersion = runCatching { engine.getDecodeVersion() }.getOrNull().orEmpty()
       }
       loadBeep()
+      sendCheckDigits(engine)
       opened = true
       state = State.READY
       error = ""
@@ -343,6 +361,9 @@ internal class ScannerEngine(private val context: Context, private val listener:
 
   companion object {
     private const val TAG = "MaesScanner"
+
+    /** Symbologies whose check digit belongs to the code itself (GTINs). */
+    private val CHECK_DIGIT_SYMBOLOGIES = listOf("EAN13", "EAN8", "UPCA", "UPCE", "ITF14")
     private const val NATIVE_LIBRARY = "NlscanHostDecodeJni"
     private const val SCAN_TIMEOUT_MS = 8000
     private const val SCAN_GUARD_MS = 10_000L
@@ -357,25 +378,14 @@ internal class ScannerEngine(private val context: Context, private val listener:
     /** Once per process, like the vendor app: the setting sticks in the service. */
     @Volatile private var scanServiceDisabled = false
 
-    /** Reads are usually ASCII; QR codes may carry UTF-8. Anything else is kept byte for byte. */
+    /** The label's own content, without engine prefixes or padding (see [ScanText]). */
     private fun decodeText(data: ByteArray?, length: Int): String {
-      if (data == null) {
-        return ""
+      val result = ScanText.clean(data, length)
+      if (result.removed.isNotEmpty()) {
+        // What was stripped, never the code itself.
+        Log.i(TAG, "Read cleaned: removed ${result.removed}")
       }
-      val bytes = data.copyOf(if (length in 1..data.size) length else data.size)
-      val text =
-          try {
-            Charsets.UTF_8.newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT)
-                .decode(ByteBuffer.wrap(bytes))
-                .toString()
-          } catch (e: CharacterCodingException) {
-            String(bytes, Charsets.ISO_8859_1)
-          }
-      // The decoder's length can include the C string terminator ("1353135\u0000"), and a
-      // suffix may add CR/LF: no control character ever leaves here (Odoo rejects NUL).
-      return text.filterNot { it < ' ' || it == '\u007f' }.trim()
+      return result.code
     }
 
     private fun endReason(eventCode: Int) =
