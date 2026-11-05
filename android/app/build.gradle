@@ -85,6 +85,27 @@ android {
         versionCode 5
         versionName "1.4"
     }
+    /*
+     * One flavor per customer (brand). The flavor gives the APK its identity
+     * (applicationId + launcher name) so two customers' apps can sit on one
+     * device; the JS bundle gets its server from src/brand/<brand>.ts through
+     * APP_BRAND (metro.config.js). The guard below keeps the two in step.
+     * Build: `APP_BRAND=castillo ./gradlew assembleCastilloRelease` — or just
+     * `scripts/build-apk.sh castillo` from the project root.
+     */
+    flavorDimensions "brand"
+    productFlavors {
+        maes {
+            dimension "brand"
+            applicationId "com.maesapp"
+            resValue "string", "app_name", "MaesApp"
+        }
+        castillo {
+            dimension "brand"
+            applicationId "com.castillovalere.scan"
+            resValue "string", "app_name", "Castillo Scan"
+        }
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -103,6 +124,28 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+/*
+ * The JS bundle of a release variant must be built with APP_BRAND = its flavor
+ * (preBuild would be wrong here: Gradle runs every variant's preBuild for any
+ * assemble). Debug variants take their bundle from Metro, started with the
+ * same APP_BRAND by hand.
+ */
+tasks.configureEach { task ->
+    def m = task.name =~ /^createBundle(\w+?)(Debug|Release)JsAndAssets$/
+    if (m) {
+        def flavor = m[0][1].toLowerCase()
+        task.doFirst {
+            def brand = System.getenv("APP_BRAND") ?: "maes"
+            if (brand != flavor) {
+                throw new GradleException(
+                    "APP_BRAND=${brand} but bundling flavor '${flavor}': the JS bundle " +
+                    "would point at the wrong Odoo server. Run with APP_BRAND=${flavor} " +
+                    "(or scripts/build-apk.sh ${flavor}).")
+            }
         }
     }
 }

@@ -23,7 +23,8 @@ npx jest -t "renders correctly"   # one test by name
 ```
 
 - Emulator on this machine: AVD `Pixel_9` (`~/Android/Sdk/emulator/emulator -avd Pixel_9`). JDK 21, SDK in `~/Android/Sdk`.
-- Native build only: `cd android && ./gradlew assembleDebug`. After Gradle/cache weirdness: `./gradlew clean`, then `npm start -- --reset-cache`.
+- **Brands (customers):** one source tree, one app per customer. `src/brand/index.ts` = MAES (default), `src/brand/castillo.ts` = Castillo Valère (Odoo Online `castillo-valere.odoo.com`). `APP_BRAND=<brand>` at bundle time swaps the brand file (`metro.config.js`, `jest.config.js`); the Android flavor of the same name gives the APK its `applicationId` + launcher name (`maes` → `com.maesapp` "MaesApp", `castillo` → `com.castillovalere.scan` "Castillo Scan"), and `build.gradle` refuses a flavor that doesn't match `APP_BRAND`. Release APK: `scripts/build-apk.sh <brand>` (checks the bundled host). Tests for a brand: `APP_BRAND=castillo npm test`. Everything customer-specific goes through `BRAND` in `src/config.ts` — never hard-code a host, company name or logo elsewhere (`BRAND.logo` → `src/assets/logo.ts`; launcher icons per flavor under `android/app/src/<brand>/res/mipmap-*`).
+- Native build only: `cd android && APP_BRAND=maes ./gradlew assembleMaesDebug` (flavor = brand). After Gradle/cache weirdness: `./gradlew clean`, then `npm start -- --reset-cache`.
 - USB device: `adb reverse tcp:8081 tcp:8081` so it can reach Metro.
 - iOS cannot be built on this Linux machine. On a Mac: `bundle install && bundle exec pod install`, then `npm run ios`.
 - Project skills: `/check` (typecheck + lint + tests), `/run-android`, `/add-native-lib`, `/odoo-api-contract`, `/release-apk`, `/maes-ui` (design system for native screens).
@@ -34,7 +35,7 @@ npx jest -t "renders correctly"   # one test by name
 - **New Architecture is the only runtime** (since RN 0.82 it can't be switched off) and Hermes is on. Every native dependency must support the New Architecture — use `/add-native-lib`.
 - `edgeToEdgeEnabled=true`: the app draws under the system bars, so screens must apply `react-native-safe-area-context` insets (the root is already wrapped in `SafeAreaProvider`).
 - Native modules autolink. Adding/removing one needs a full rebuild (`npm run android`), not a Metro reload.
-- Android: `applicationId com.maesapp`, minSdk 24 / target 36 / compile 37. Release builds are still signed with the **debug** keystore (template default). The manifest requests `INTERNET`, `CAMERA` and `VIBRATE` (the handheld's scan engine is a camera module) and declares `<queries>` for the handheld's scan service; cleartext HTTP works in debug builds only. `android/libscan` is a Gradle library module (vendor scanner SDK).
+- Android: `applicationId` per flavor (`com.maesapp` / `com.castillovalere.scan`), minSdk 24 / target 36 / compile 37. Release builds are still signed with the **debug** keystore (template default). The manifest requests `INTERNET`, `CAMERA` and `VIBRATE` (the handheld's scan engine is a camera module) and declares `<queries>` for the handheld's scan service; cleartext HTTP works in debug builds only. `android/libscan` is a Gradle library module (vendor scanner SDK).
 - Formatting is Prettier (single quotes, trailing commas, `arrowParens: avoid`). A hook runs prettier + `eslint --fix` on every file Claude edits.
 
 ## Backend: Odoo 19

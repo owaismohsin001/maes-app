@@ -15,7 +15,7 @@ Build a release of MaesApp. Default output is an APK (internal sideload / MDM); 
 3. **Version.** Ask for (or propose) the new `versionName`, and increment `versionCode` in `android/app/build.gradle`.
 4. **Quality gate.** Run `/check`; stop on failures.
 5. **Build.**
-   - APK: `cd android && ./gradlew assembleRelease` → `android/app/build/outputs/apk/release/app-release.apk`
+   - APK: `scripts/build-apk.sh <brand>` (maes | castillo; sets `APP_BRAND`, runs `assemble<Brand>Release`, copies to `~/maes-app-apk/<AppName>-<version>.apk` and checks the bundled Odoo host) → `android/app/build/outputs/apk/<brand>/release/app-<brand>-release.apk`
    - AAB: `cd android && ./gradlew bundleRelease` → `android/app/build/outputs/bundle/release/app-release.aab`
 6. **Smoke test the APK.** `adb install -r <apk>`, launch it, and check `adb logcat -d -t 200 ReactNativeJS:V AndroidRuntime:E '*:S'` for crashes. Release builds have no Metro and no cleartext HTTP.
 7. Report the file path, size, versionName/versionCode, the backend URL baked in, and anything not verified (iOS is not buildable here).

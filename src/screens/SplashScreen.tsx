@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
+import { BRAND } from '../config';
 
 // The logo with the ring around the "M" erased; the ring is drawn below as a
 // spinner in exactly the same place (geometry shared with `LogoSpinner`).
@@ -169,7 +170,7 @@ function SplashScreen({
           resizeMode="contain"
           fadeDuration={0}
           accessibilityRole="image"
-          accessibilityLabel="MAES Security"
+          accessibilityLabel={BRAND.companyName}
           style={styles.logo}
         />
         {/* The logo's ring, spinning while the app loads… */}

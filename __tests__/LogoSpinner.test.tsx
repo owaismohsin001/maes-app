@@ -7,7 +7,22 @@ import { StyleSheet } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import LoadingView from '../src/components/LoadingView';
 import LogoSpinner from '../src/components/LogoSpinner';
-import { LOGO_RING, LOGO_RING_DIAMETER } from '../src/assets/logo';
+import {
+  LOGO_RING,
+  LOGO_RING_DIAMETER,
+  LOGO_SIZE,
+  logoM,
+  logoWithoutRing,
+} from '../src/assets/logo';
+
+// The jest preset mocks an image require as `{ testUri: '<path>' }`; the
+// file name tells which of the brand's logo files a tree shows.
+const fileOf = (source: unknown) =>
+  String((source as { testUri: string }).testUri)
+    .split('/')
+    .pop()!;
+const MARK = fileOf(logoM);
+const WITHOUT_RING = fileOf(logoWithoutRing);
 import { t } from '../src/i18n';
 
 jest.useFakeTimers();
@@ -51,8 +66,10 @@ test('mark variant: only the "M", with the ring filling the whole square', async
   const tree = renderer.toJSON();
   const json = JSON.stringify(tree);
 
-  expect(json).toContain('maes_logo_m.png');
-  expect(json).not.toContain('maes_logo_mark.png');
+  expect(json).toContain(MARK);
+  if (WITHOUT_RING !== MARK) {
+    expect(json).not.toContain(WITHOUT_RING);
+  }
 
   const ring = styleOf(byTestID(tree, 'logo-spinner-ring'));
   expect(ring).toMatchObject({ left: 0, top: 0, width: 64, height: 64 });
@@ -72,12 +89,14 @@ test('full variant: whole logo, ring at the measured position of the "M"', async
   const tree = renderer.toJSON();
   const json = JSON.stringify(tree);
 
-  expect(json).toContain('maes_logo_mark.png');
-  expect(json).not.toContain('maes_logo_m.png');
+  expect(json).toContain(WITHOUT_RING);
+  if (WITHOUT_RING !== MARK) {
+    expect(json).not.toContain(MARK);
+  }
 
   expect(styleOf(byTestID(tree, 'logo-spinner'))).toMatchObject({
-    width: 268,
-    height: 160,
+    width: LOGO_SIZE.width,
+    height: LOGO_SIZE.height,
   });
   const ring = styleOf(byTestID(tree, 'logo-spinner-ring'));
   expect(ring.left).toBeCloseTo(LOGO_RING.cx - LOGO_RING.rOuter);
@@ -109,7 +128,7 @@ test('LoadingView shows the spinner with an optional label', async () => {
   );
   const json = JSON.stringify(renderer.toJSON());
 
-  expect(json).toContain('maes_logo_mark.png');
+  expect(json).toContain(WITHOUT_RING);
   expect(json).toContain('Fetching product');
 
   await ReactTestRenderer.act(() => renderer.unmount());

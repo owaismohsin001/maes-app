@@ -15,7 +15,12 @@ const rendered = (renderer: ReactTestRenderer.ReactTestRenderer) =>
   JSON.stringify(renderer.toJSON());
 
 // The splash renders the ring-less logo asset.
-const SPLASH_LOGO = 'maes_logo_mark';
+import { logoWithoutRing } from '../src/assets/logo';
+
+// The brand's splash logo file (the jest preset mocks an image require as `{ testUri }`).
+const SPLASH_LOGO = String((logoWithoutRing as { testUri: string }).testUri)
+  .split('/')
+  .pop()!;
 
 test('keeps the splash up until Odoo is ready, then shows Odoo alone', async () => {
   let renderer!: ReactTestRenderer.ReactTestRenderer;

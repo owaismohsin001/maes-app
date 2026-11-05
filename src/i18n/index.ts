@@ -59,7 +59,7 @@ const en = {
   'scanner.state.errorBody':
     "The scan engine didn't start. Try again; if it keeps failing, restart the device.",
   'scanner.state.unavailableBody':
-    'Type codes with the keyboard button, or use MaesApp on the MAES handheld.',
+    'Type codes with the keyboard button, or use %s on the handheld.',
   'scanner.section.test': 'Test the scanner',
   'scanner.section.setup': 'Setup',
   'scanner.section.device': 'Device details',
@@ -379,7 +379,7 @@ const nl: Record<TranslationKey, string> = {
   'scanner.state.errorBody':
     'De scanmodule is niet gestart. Probeer opnieuw; lukt het niet, herstart dan het toestel.',
   'scanner.state.unavailableBody':
-    'Typ codes met de toetsenbordknop, of gebruik MaesApp op de MAES-handheld.',
+    'Typ codes met de toetsenbordknop, of gebruik %s op de handheld.',
   'scanner.section.test': 'Scanner testen',
   'scanner.section.setup': 'Instellingen',
   'scanner.section.device': 'Toestelgegevens',

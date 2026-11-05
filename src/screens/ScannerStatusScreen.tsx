@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { APP_VERSION } from '../config';
+import { APP_VERSION, BRAND } from '../config';
 import { TranslationKey, t } from '../i18n';
 import {
   CameraPermission,
@@ -383,7 +383,7 @@ function StatusCard({
             {t(state ? SCANNER_STATE_LABELS[state] : 'scanner.state.checking')}
           </Text>
           <Text style={[type.body, { color: c.textMuted, marginTop: s.xs }]}>
-            {t(look.body)}
+            {t(look.body).replace('%s', BRAND.appName)}
           </Text>
         </View>
       </View>

@@ -1,15 +1,20 @@
-/** The LIVE production server (odoo.maes-security.com → 16.16.235.235). */
-export const ODOO_LIVE_ORIGIN = 'https://odoo.maes-security.com';
+import brand from './brand';
 
-/** The client's TEST box (13.60.79.10): safe to scan, validate and count on. */
-export const ODOO_TEST_ORIGIN = 'https://testing.maes-security.com';
+export type { Brand } from './brand/types';
 
 /**
- * The Odoo server the app talks to (WebView and native screens). The TEST box
- * for now, at the user's request (2026-10-26), so scanning can be tried
- * without touching live stock. Switch to `ODOO_LIVE_ORIGIN` for go-live.
+ * The brand this build was made for (`APP_BRAND` at build time: `maes` by
+ * default, `castillo` for Castillo Valère). Everything customer-specific —
+ * server, app name — comes from here; see `src/brand/`.
  */
-export const ODOO_ORIGIN = ODOO_TEST_ORIGIN;
+export const BRAND = brand;
+
+/**
+ * The Odoo server the app talks to (WebView and scanner relay): the brand's
+ * server. For MAES this is the TEST box unless `src/brand/index.ts` says
+ * otherwise.
+ */
+export const ODOO_ORIGIN = BRAND.odooOrigin;
 
 /**
  * Start page: the Odoo backend. Signed-in users land straight on their apps;
