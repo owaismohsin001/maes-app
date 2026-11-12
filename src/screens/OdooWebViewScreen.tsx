@@ -15,7 +15,6 @@ import type {
   WebViewOpenWindowEvent,
 } from 'react-native-webview/lib/WebViewTypes';
 import LoadingView from '../components/LoadingView';
-import ScannerOverlay from '../components/ScannerOverlay';
 import { ODOO_WEB_URL } from '../config';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { useTheme } from '../hooks/useTheme';
@@ -30,15 +29,9 @@ import {
   parsePageHistoryMessage,
 } from '../utils/odooPageScript';
 import { nativeScanner } from '../scanner/scanner';
-import { useScanLog } from '../scanner/useScanLog';
-import {
-  ODOO_SCANNER_PAGE_SCRIPT,
-  isOpenScannerMessage,
-  odooBarcodeScript,
-  parseBarcodeResultMessage,
-  parsePageUrlMessage,
-} from '../utils/odooBarcodeScript';
-import { isAuthPage, isBarcodeAppUrl, isOdooUrl } from '../utils/odooUrl';
+import { useHandheldScanner } from '../scanner/useHandheldScanner';
+import { odooBarcodeScript } from '../utils/odooBarcodeScript';
+import { isAuthPage, isOdooUrl } from '../utils/odooUrl';
 
 // The library's class type defaults its extra-props parameter to `undefined`,
 // which turns every prop into `never`; pin it to `object`.
@@ -56,27 +49,28 @@ type Props = {
    * load event as a fallback.
    */
   onReady?: () => void;
+  /**
+   * False while the app is locked (app control, see `useAppControl`): the
+   * handheld's reads are dropped instead of typed into the hidden page.
+   */
+  scanEnabled?: boolean;
 };
 
 const READY_FALLBACK_MS = 6000;
-
-/** Back from the scanner screen: load Odoo's start page if history hasn't left the Barcode app by then. */
-export const LEAVE_BARCODE_FALLBACK_MS = 1500;
-
-// With the handheld's scanner module, pages also report their URL and hand
-// Odoo's own scan buttons over to the app's scanner screen.
-const PAGE_SCRIPT = nativeScanner
-  ? `${ODOO_PAGE_SCRIPT}\n${ODOO_SCANNER_PAGE_SCRIPT}`
-  : ODOO_PAGE_SCRIPT;
 
 /**
  * The Odoo web client, full screen, behaving like native screens: Android back
  * walks back through the pages (see `useWebViewBackHandler`), iOS gets the
  * swipe-back gesture. The status bar and navigation bar areas take the colour
- * of the page edge behind them. While Odoo's Barcode app is open, the app's
- * scanner screen covers it (see `ScannerOverlay`).
+ * of the page edge behind them. That is the whole app: the handheld's CM60
+ * scanner (side button) types each read into the page like a keyboard-wedge
+ * scanner (`useHandheldScanner`). Nothing is drawn over Odoo.
  */
-function OdooWebViewScreen({ active = true, onReady }: Props) {
+function OdooWebViewScreen({
+  active = true,
+  onReady,
+  scanEnabled = true,
+}: Props) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const keyboardHeight = useKeyboardHeight();
@@ -119,55 +113,31 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
   }, [markReady]);
 
   const history = useWebViewBackHandler(webViewRef, t('web.exitHint'));
-  const scanLog = useScanLog();
 
-  // Where the page is: from load events and the page's own reports (Odoo
-  // navigates in-page, without loads).
-  const [pageUrl, setPageUrl] = useState(ODOO_WEB_URL);
-  const inBarcodeApp = isBarcodeAppUrl(pageUrl);
-  // The scanner screen takes the place of Odoo's Barcode app: it opens when
-  // the app does and closes when the app is left.
-  const [scannerOpen, setScannerOpen] = useState(false);
-  useEffect(() => {
-    setScannerOpen(inBarcodeApp);
-  }, [inBarcodeApp]);
-
-  // Back on the scanner screen leaves the Barcode app for the page before it
-  // (normally the apps menu), one history step at a time if the app went
-  // deeper. The scanner screen stays up until Odoo is out of the app, so the
-  // app's own screens never flash up; if history doesn't get there, Odoo's
-  // start page is loaded instead.
-  const [leavingBarcode, setLeavingBarcode] = useState(false);
-  const backFromUrlRef = useRef<string | null>(null);
-  const leaveBarcodeApp = useCallback(() => setLeavingBarcode(true), []);
-  useEffect(() => {
-    if (!leavingBarcode) {
+  // A read goes into the page as real key presses (the WebView sees a
+  // keyboard-wedge scanner); the page script is the fallback when that can't
+  // be done (no WebView on screen, a character without a key).
+  const deliverCode = useCallback((code: string) => {
+    const viaScript = () =>
+      webViewRef.current?.injectJavaScript(odooBarcodeScript(code));
+    if (!nativeScanner) {
+      viaScript();
       return;
     }
-    if (!inBarcodeApp) {
-      setLeavingBarcode(false);
-      backFromUrlRef.current = null;
-      return;
-    }
-    if (backFromUrlRef.current !== pageUrl) {
-      backFromUrlRef.current = pageUrl;
-      webViewRef.current?.goBack();
-    }
-    const fallback = setTimeout(() => {
-      webViewRef.current?.injectJavaScript(
-        `window.location.assign(${JSON.stringify(ODOO_WEB_URL)});true;`,
-      );
-    }, LEAVE_BARCODE_FALLBACK_MS);
-    return () => clearTimeout(fallback);
-  }, [leavingBarcode, inBarcodeApp, pageUrl]);
-  const coveredByScanner = scannerOpen && nativeScanner != null;
+    nativeScanner.typeText(code).then(typed => {
+      if (!typed) {
+        viaScript();
+      }
+    }, viaScript);
+  }, []);
+
+  useHandheldScanner(deliverCode, scanEnabled);
 
   // Signing in or out starts a fresh history, so back never returns to the
   // login form after signing in, nor into Odoo screens after signing out.
   const onLoad = useCallback(
     (e: WebViewNavigationEvent) => {
       history.onPageLoaded(e.nativeEvent.canGoBack);
-      setPageUrl(e.nativeEvent.url);
       const auth = isAuthPage(e.nativeEvent.url);
       const previous = lastPageWasAuthRef.current;
       lastPageWasAuthRef.current = auth;
@@ -180,9 +150,8 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
   );
 
   const onNavigationStateChange = useCallback(
-    (nav: WebViewNavigation) => {
+    (_nav: WebViewNavigation) => {
       history.onNavigationActivity();
-      setPageUrl(nav.url);
     },
     [history],
   );
@@ -219,37 +188,9 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
             ? prev
             : colors,
         );
-        return;
-      }
-      const url = parsePageUrlMessage(data);
-      if (url !== null) {
-        setPageUrl(url);
-        return;
-      }
-      if (isOpenScannerMessage(data)) {
-        setScannerOpen(true);
-        return;
-      }
-      const result = parseBarcodeResultMessage(data);
-      if (result) {
-        scanLog.resolve(result);
       }
     },
-    [markReady, history, scanLog],
-  );
-
-  // A code read by the handheld goes to the page as if a USB scanner had
-  // typed it: into Odoo's Barcode app while it is open (the scanner screen
-  // covers it and shows Odoo's answer), or into whatever Odoo screen is open
-  // (side button). Odoo's notifications about it come back through
-  // `onMessage` and resolve the log entry.
-  const deliverCode = useCallback(
-    (code: string) => {
-      const id = scanLog.add(code);
-      webViewRef.current?.injectJavaScript(odooBarcodeScript(code, id));
-      return id;
-    },
-    [scanLog],
+    [markReady, history],
   );
 
   // A failed load shows the error screen: theme colours, and the splash may go.
@@ -268,11 +209,7 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
       {active ? (
         <StatusBar
           animated
-          barStyle={
-            isLightColor(coveredByScanner ? theme.background : topColor)
-              ? 'dark-content'
-              : 'light-content'
-          }
+          barStyle={isLightColor(topColor) ? 'dark-content' : 'light-content'}
         />
       ) : null}
       <View
@@ -286,8 +223,8 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
         // Hide the website footer and report edge colours: as early as
         // possible, and again after load in case the early run landed before
         // the new document existed (the script runs once per document).
-        injectedJavaScriptBeforeContentLoaded={PAGE_SCRIPT}
-        injectedJavaScript={PAGE_SCRIPT}
+        injectedJavaScriptBeforeContentLoaded={ODOO_PAGE_SCRIPT}
+        injectedJavaScript={ODOO_PAGE_SCRIPT}
         onMessage={onMessage}
         onError={onError}
         onLoadEnd={onLoadEnd}
@@ -297,7 +234,6 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
         renderError={() => <ErrorView onRetry={reload} />}
         // For the back handler only "something is navigating" signals: the
         // canGoBack they carry is stale for in-page navigation on Android.
-        // The URL is right, though, and tracked for the scanner screen.
         onNavigationStateChange={onNavigationStateChange}
         onLoadProgress={history.onNavigationActivity}
         onLoad={onLoad}
@@ -314,13 +250,6 @@ function OdooWebViewScreen({ active = true, onReady }: Props) {
           height: insets.bottom + keyboardHeight,
           backgroundColor: bottomColor,
         }}
-      />
-      <ScannerOverlay
-        open={scannerOpen}
-        leaving={leavingBarcode}
-        onBack={leaveBarcodeApp}
-        onCode={deliverCode}
-        entries={scanLog.entries}
       />
     </View>
   );

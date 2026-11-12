@@ -46,6 +46,12 @@ export interface Spec extends TurboModule {
   stopScan(): void;
   /** Beep and vibrate: a code was accepted. */
   feedback(): void;
+  /**
+   * Types the text + Enter into the Odoo WebView as real Android key events,
+   * like a keyboard-wedge scanner. False when it couldn't (no WebView on
+   * screen, or a character with no key): nothing was typed then.
+   */
+  typeText(text: string): Promise<boolean>;
   /** Resolves with the next key pressed (Back excluded), saved as the scan button. */
   learnScanKey(): Promise<number>;
   cancelLearnScanKey(): void;

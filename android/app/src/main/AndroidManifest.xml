@@ -4,6 +4,12 @@
     <!-- The handheld's scan engine (libscan) is a camera module; vibration confirms a read. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- App control (odoo19Module §P450): the app only runs at the allowed place - GPS position, or the
+         office network (the server sees the address; the app reports Wi-Fi vs mobile data). -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <!-- Phones without a camera can still install the app; the scanner reports itself unavailable. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 

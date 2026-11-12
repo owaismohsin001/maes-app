@@ -17,6 +17,7 @@ test.each(brands)('brand $key is complete', brand => {
   expect(brand.appName).not.toBe('');
   expect(brand.companyName).not.toBe('');
   expect(brand.odooOrigin).toMatch(/^https:\/\/[^/]+$/);
+  expect(brand.controlOrigin).toMatch(/^https:\/\/[^/]+$/);
   expect(brand.logo.full).toBeTruthy();
   expect(brand.logo.withoutRing).toBeTruthy();
   expect(brand.logo.mark).toBeTruthy();
@@ -47,4 +48,10 @@ test('the build under test exposes its brand through config', () => {
   expect(BRAND).toBe(expected);
   expect(ODOO_ORIGIN).toBe(expected.odooOrigin);
   expect(ODOO_WEB_URL).toBe(`${expected.odooOrigin}/odoo`);
+});
+
+test("every brand's devices are managed in MAES's live Odoo (§P450)", () => {
+  // Castillo is Odoo Online: no custom module there, so MAES's server decides.
+  expect(maes.controlOrigin).toBe('https://odoo.maes-security.com');
+  expect(castillo.controlOrigin).toBe(maes.controlOrigin);
 });

@@ -12,7 +12,6 @@ import {
   EXIT_CONFIRM_WINDOW_MS,
 } from '../src/hooks/useWebViewBackHandler';
 import OdooWebViewScreen from '../src/screens/OdooWebViewScreen';
-import { ODOO_SCANNER_PAGE_SCRIPT } from '../src/utils/odooBarcodeScript';
 import {
   ODOO_PAGE_SCRIPT,
   PAGE_COLORS_MESSAGE,
@@ -84,10 +83,11 @@ async function message(data: string) {
 test('opens the Odoo backend, hiding the website footer early and after load', () => {
   expect(ODOO_WEB_URL).toBe(`${ODOO_ORIGIN}/odoo`);
   expect(webViewProps().source).toEqual({ uri: ODOO_WEB_URL });
-  // With the scanner module (mocked here) the scanner page script comes along.
-  const pageScript = `${ODOO_PAGE_SCRIPT}\n${ODOO_SCANNER_PAGE_SCRIPT}`;
-  expect(webViewProps().injectedJavaScriptBeforeContentLoaded).toBe(pageScript);
-  expect(webViewProps().injectedJavaScript).toBe(pageScript);
+  // Only the general page script: nothing scanner-related is put in the page.
+  expect(webViewProps().injectedJavaScriptBeforeContentLoaded).toBe(
+    ODOO_PAGE_SCRIPT,
+  );
+  expect(webViewProps().injectedJavaScript).toBe(ODOO_PAGE_SCRIPT);
 });
 
 test('back after a full page load goes to the previous page', async () => {

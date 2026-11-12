@@ -41,5 +41,11 @@ export type Brand = {
   companyName: string;
   /** Odoo server origin (scheme + host, no trailing slash). */
   odooOrigin: string;
+  /**
+   * The Odoo server that decides whether the app may run on this device
+   * (`POST /maes_app/check`, odoo19Module §P450): device allowed / blocked,
+   * app switched on, at the allowed place. MAES's Odoo for every brand.
+   */
+  controlOrigin: string;
   logo: BrandLogo;
 };

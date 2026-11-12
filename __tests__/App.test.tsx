@@ -8,6 +8,7 @@ import { WebView } from 'react-native-webview';
 import App from '../App';
 import { ODOO_WEB_URL } from '../src/config';
 import { SPLASH_DURATION_MS } from '../src/screens/SplashScreen';
+import { t } from '../src/i18n';
 
 jest.useFakeTimers();
 
@@ -52,4 +53,43 @@ test('keeps the splash up until Odoo is ready, then shows Odoo alone', async () 
   await ReactTestRenderer.act(() => {
     renderer.unmount();
   });
+});
+
+test('a locked device: the lock screen covers Odoo after the splash', async () => {
+  const fetchMock = globalThis.fetch as unknown as jest.Mock;
+  const allowed = (globalThis as unknown as { __allowedAnswer: () => object })
+    .__allowedAnswer;
+  fetchMock.mockImplementation(() =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({ ...allowed(), ok: false, reason: 'blocked' }),
+    }),
+  );
+  let renderer!: ReactTestRenderer.ReactTestRenderer;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await ReactTestRenderer.act(async () => {});
+    await ReactTestRenderer.act(() => {
+      renderer.root
+        .findByType(WebView)
+        .props.onMessage({ nativeEvent: { data: '{"type":"maes:page-ready"}' } });
+    });
+    await ReactTestRenderer.act(() => {
+      jest.advanceTimersByTime(SPLASH_DURATION_MS + 1000);
+    });
+    expect(renderer.root.findAllByProps({ testID: 'lock-screen' }).length).toBeGreaterThan(0);
+    expect(rendered(renderer)).toContain(t('control.blocked.title'));
+    expect(renderer.root.findByType(WebView)).toBeTruthy(); // kept behind it
+  } finally {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(allowed()) }),
+    );
+    await ReactTestRenderer.act(() => {
+      renderer.unmount();
+    });
+  }
 });

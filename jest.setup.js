@@ -88,6 +88,7 @@ jest.mock('./src/native/NativeMaesScanner', () => {
     startScan: jest.fn(),
     stopScan: jest.fn(),
     feedback: jest.fn(),
+    typeText: jest.fn(() => Promise.resolve(true)),
     learnScanKey: jest.fn(() => Promise.resolve(290)),
     cancelLearnScanKey: jest.fn(),
     onScanEvent: subscribe('onScanEvent'),
@@ -101,12 +102,14 @@ jest.mock('./src/native/NativeMaesScanner', () => {
       scanner.prepare.mockImplementation(() =>
         Promise.resolve(status('ready')),
       );
+      scanner.typeText.mockImplementation(() => Promise.resolve(true));
       [
         scanner.getStatus,
         scanner.prepare,
         scanner.startScan,
         scanner.stopScan,
         scanner.feedback,
+        scanner.typeText,
         scanner.learnScanKey,
         scanner.cancelLearnScanKey,
       ].forEach(fn => fn.mockClear());
@@ -114,3 +117,56 @@ jest.mock('./src/native/NativeMaesScanner', () => {
   };
   return { __esModule: true, default: scanner };
 });
+
+// The device-identity / location TurboModule (src/native/NativeMaesDevice):
+// an allowed handheld on Wi-Fi with a fresh, precise position by default.
+// Tests change `getInfo` / `getLocation` per test and reset with `__reset()`.
+jest.mock('./src/native/NativeMaesDevice', () => {
+  const info = () => ({
+    deviceId: 'a1b2c3d4e5f60718',
+    model: 'HC CM60',
+    osVersion: '11',
+    connection: 'wifi',
+  });
+  const location = () => ({
+    status: 'ok',
+    latitude: 51.0991627,
+    longitude: 3.9723471,
+    accuracy: 12,
+    ageMs: 5000,
+    mock: false,
+  });
+  const device = {
+    getInfo: jest.fn(() => Promise.resolve(info())),
+    getLocation: jest.fn(() => Promise.resolve(location())),
+    __info: info,
+    __location: location,
+    __reset: () => {
+      device.getInfo.mockReset();
+      device.getInfo.mockImplementation(() => Promise.resolve(info()));
+      device.getLocation.mockReset();
+      device.getLocation.mockImplementation(() => Promise.resolve(location()));
+    },
+  };
+  return { __esModule: true, default: device };
+});
+
+// The app-control check (src/api/appControl): the server allows the device
+// by default. Tests replace `global.fetch` per test (see appControl tests).
+global.__allowedAnswer = () => ({
+  ok: true,
+  reason: 'ok',
+  device_code: 'A1B2C3',
+  need_location: false,
+  location_name: 'HQ Lokeren',
+  distance_m: null,
+  interval_s: 60,
+  grace_s: 600,
+});
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(global.__allowedAnswer()),
+  }),
+);

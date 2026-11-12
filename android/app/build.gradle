@@ -82,8 +82,8 @@ android {
         applicationId "com.maesapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.4"
+        versionCode 8
+        versionName "1.7"
     }
     /*
      * One flavor per customer (brand). The flavor gives the APK its identity

@@ -11,8 +11,7 @@ export const BRAND = brand;
 
 /**
  * The Odoo server the app talks to (WebView and scanner relay): the brand's
- * server. For MAES this is the TEST box unless `src/brand/index.ts` says
- * otherwise.
+ * server (MAES: the LIVE server since 2026-11-03, see `src/brand/index.ts`).
  */
 export const ODOO_ORIGIN = BRAND.odooOrigin;
 
@@ -24,7 +23,7 @@ export const ODOO_ORIGIN = BRAND.odooOrigin;
 export const ODOO_WEB_URL = `${ODOO_ORIGIN}/odoo`;
 
 /**
- * Shown on the scanner settings screen so a screenshot tells which build the
- * handheld runs. Keep in step with `versionName` in android/app/build.gradle.
+ * Sent with every app-control check, so Odoo's device list shows which build
+ * each handheld runs. Keep in step with `versionName` in android/app/build.gradle.
  */
-export const APP_VERSION = '1.4';
+export const APP_VERSION = '1.7';

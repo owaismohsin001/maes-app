@@ -1,12 +1,6 @@
 /** `type` of the message reporting how Odoo took a code (see `odooBarcodeScript`). */
 export const BARCODE_RESULT_MESSAGE = 'maes:barcode-result';
 
-/** `type` of the message asking the app to open its scanner screen. */
-export const OPEN_SCANNER_MESSAGE = 'maes:open-scanner';
-
-/** `type` of the message with the page's current URL. */
-export const PAGE_URL_MESSAGE = 'maes:url';
-
 /** Odoo's answer to a code: the worst notification it showed, if any. */
 export type BarcodeResult = {
   id: string;
@@ -16,14 +10,6 @@ export type BarcodeResult = {
 
 /** How long Odoo gets to show a notification about a code. */
 export const BARCODE_RESULT_DELAY_MS = 1500;
-
-/**
- * Odoo's own scan buttons in the Barcode app, which open the phone camera:
- * "Scan or tap" on the main menu, the barcode button on the operations list
- * and in an operation, and the generic `barcodes.BarcodeScanner` button.
- */
-const ODOO_SCAN_BUTTONS =
-  '.o_barcode_tap_to_scan, .o_stock_mobile_barcode, .o_mobile_barcode';
 
 /**
  * Script that hands a scanned code to the Odoo page, the way a USB scanner
@@ -41,9 +27,13 @@ const ODOO_SCAN_BUTTONS =
  * Either way Odoo then does what it does for any scanner: the Barcode app
  * opens the product, location or transfer, fills in a serial, and so on.
  *
+ * Since v1.6 this is only the fallback: the app first types the code as real
+ * Android key events (`NativeMaesScanner.typeText`, like a keyboard-wedge
+ * scanner) and uses this script when that isn't possible.
+ *
  * With an `id`, the notifications Odoo shows in the next
  * `BARCODE_RESULT_DELAY_MS` (e.g. "no product for this barcode") are posted
- * back as a `BARCODE_RESULT_MESSAGE`: the app's scanner screen covers Odoo's.
+ * back as a `BARCODE_RESULT_MESSAGE`.
  */
 export function odooBarcodeScript(code: string, id = ''): string {
   return `(function (code, id) {
@@ -122,55 +112,6 @@ export function odooBarcodeScript(code: string, id = ''): string {
 true;`;
 }
 
-/**
- * Injected into every page next to the general page script when the device
- * has the scanner module:
- * - posts the page URL at start and on every history entry change (Odoo
- *   navigates in-page), so the app knows when the Barcode app is open;
- * - turns Odoo's own scan buttons (`ODOO_SCAN_BUTTONS`) into "open the app's
- *   scanner screen" instead of the phone camera. The listener runs in the
- *   capture phase on the document, so Odoo's handlers never see the click.
- */
-export const ODOO_SCANNER_PAGE_SCRIPT = `(function () {
-  if (document.__maesScannerScript) return;
-  document.__maesScannerScript = true;
-  var BARCODE_HREF = /^(https?:\\/\\/[^/]+)?\\/odoo\\/barcode(-[a-z]+)?([/?#]|$)/;
-
-  function post(msg) {
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(JSON.stringify(msg));
-    }
-  }
-  function postUrl() {
-    if (typeof location.href === 'string') {
-      post({ type: ${JSON.stringify(PAGE_URL_MESSAGE)}, url: location.href });
-    }
-  }
-  if (window.navigation) {
-    window.navigation.addEventListener('currententrychange', postUrl);
-  }
-  window.addEventListener('pageshow', postUrl);
-  postUrl();
-
-  document.addEventListener('click', function (ev) {
-    var t = ev.target;
-    if (!t || !t.closest) return;
-    // The Barcode app's tile on the home menu: open the scanner screen right
-    // away (Odoo still opens the app underneath), so Odoo's own screen never
-    // flashes up first.
-    var tile = t.closest('a.o_app');
-    if (tile && BARCODE_HREF.test(tile.getAttribute('href') || '')) {
-      post({ type: ${JSON.stringify(OPEN_SCANNER_MESSAGE)} });
-      return;
-    }
-    if (!t.closest(${JSON.stringify(ODOO_SCAN_BUTTONS)})) return;
-    ev.preventDefault();
-    ev.stopImmediatePropagation();
-    post({ type: ${JSON.stringify(OPEN_SCANNER_MESSAGE)} });
-  }, true);
-})();
-true;`;
-
 function parse(data: string): Record<string, unknown> | null {
   try {
     const msg = JSON.parse(data);
@@ -203,17 +144,4 @@ export function parseBarcodeResultMessage(data: string): BarcodeResult | null {
     };
   }
   return null;
-}
-
-/** The page URL from the scanner page script; null for anything else. */
-export function parsePageUrlMessage(data: string): string | null {
-  const msg = parse(data);
-  return msg?.type === PAGE_URL_MESSAGE && typeof msg.url === 'string'
-    ? msg.url
-    : null;
-}
-
-/** True when the page asked for the app's scanner screen. */
-export function isOpenScannerMessage(data: string): boolean {
-  return parse(data)?.type === OPEN_SCANNER_MESSAGE;
 }

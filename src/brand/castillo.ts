@@ -1,3 +1,4 @@
+import { MAES_LIVE_ORIGIN } from './servers';
 import type { Brand } from './types';
 
 /**
@@ -15,6 +16,10 @@ const brand: Brand = {
   appName: 'Castillo Scan',
   companyName: 'Castillo Valère',
   odooOrigin: 'https://castillo-valere.odoo.com',
+  // Odoo Online can't run our control module: Castillo's handhelds are
+  // allowed / blocked in MAES's Odoo (Inventory > Configuration > Scan app,
+  // app "Castillo Scan"), decided 2026-11-12.
+  controlOrigin: MAES_LIVE_ORIGIN,
   logo: {
     full: require('../assets/images/castillo_logo.png'),
     // Nothing to erase: the ring runs around the diamond, not through it.

@@ -20,7 +20,7 @@ const en = {
   'scanner.stop': 'Stop scanning',
   'scanner.screenTitle': 'Barcode scanner',
   'scanner.aim':
-    'Point the scanner at a barcode. Every code goes straight to Odoo.',
+    'Press the scan button and point at a barcode. Every code goes straight to Odoo.',
   'scanner.status': 'Status',
   'scanner.settings': 'Scanner settings',
   'scanner.recent': 'Recent scans',
@@ -322,6 +322,40 @@ const en = {
   'barcode.count.editBody': 'Set the counted quantity.',
   'barcode.count.chooseLocation': 'Location',
   'barcode.count.chooseLocationBody': "Or scan the location's barcode.",
+  // App control (odoo19Module §P450): the lock screen over Odoo.
+  'control.decimal': '.',
+  'control.checking': 'Checking this device…',
+  'control.checkingShort': 'Checking…',
+  'control.deviceCode': 'Device code: %s',
+  'control.allowLocation': 'Allow location',
+  'control.pending.title': 'Waiting for approval',
+  'control.pending.body':
+    'An administrator has to allow this device in Odoo first. Give them the device code below.',
+  'control.blocked.title': 'This device is blocked',
+  'control.blocked.body':
+    'An administrator has blocked the app on this device.',
+  'control.disabled.title': 'The app is switched off',
+  'control.disabled.body': 'An administrator has switched the app off for now.',
+  'control.outside.title': 'Not at the allowed location',
+  'control.outside.body': 'This app only works at %s.',
+  'control.outside.place': 'the allowed location',
+  'control.outside.distance': 'You are about %s away.',
+  'control.noLocation.title': 'Location needed',
+  'control.noLocation.body':
+    'Switch on location (GPS), or connect to the office Wi-Fi, then try again.',
+  'control.noLocation.permissionBody':
+    'Allow the app to use your location, or connect to the office Wi-Fi.',
+  'control.mock.title': 'Fake location detected',
+  'control.mock.body':
+    'Switch off the app that fakes your location, then try again.',
+  'control.unknown.title': 'This app is not set up',
+  'control.unknown.body':
+    'Ask your administrator to set up this app in Odoo.',
+  'control.offline.title': "Can't reach the server",
+  'control.offline.body':
+    'Check the internet connection. The app opens again as soon as the check succeeds.',
+  'control.unsupported.title': 'Not supported on this device',
+  'control.unsupported.body': 'This app only runs on Android handhelds.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -340,7 +374,7 @@ const nl: Record<TranslationKey, string> = {
   'scanner.stop': 'Scannen stoppen',
   'scanner.screenTitle': 'Barcodescanner',
   'scanner.aim':
-    'Richt de scanner op een barcode. Elke code gaat meteen naar Odoo.',
+    'Druk op de scanknop en richt op een barcode. Elke code gaat meteen naar Odoo.',
   'scanner.status': 'Status',
   'scanner.settings': 'Scannerinstellingen',
   'scanner.recent': 'Recente scans',
@@ -651,6 +685,39 @@ const nl: Record<TranslationKey, string> = {
   'barcode.count.editBody': 'Stel het getelde aantal in.',
   'barcode.count.chooseLocation': 'Locatie',
   'barcode.count.chooseLocationBody': 'Of scan de barcode van de locatie.',
+  'control.decimal': ',',
+  'control.checking': 'Toestel wordt gecontroleerd…',
+  'control.checkingShort': 'Controleren…',
+  'control.deviceCode': 'Toestelcode: %s',
+  'control.allowLocation': 'Locatie toestaan',
+  'control.pending.title': 'Wacht op goedkeuring',
+  'control.pending.body':
+    'Een beheerder moet dit toestel eerst toestaan in Odoo. Geef de beheerder de toestelcode hieronder.',
+  'control.blocked.title': 'Dit toestel is geblokkeerd',
+  'control.blocked.body':
+    'Een beheerder heeft de app op dit toestel geblokkeerd.',
+  'control.disabled.title': 'De app is uitgeschakeld',
+  'control.disabled.body':
+    'Een beheerder heeft de app voorlopig uitgeschakeld.',
+  'control.outside.title': 'Niet op de toegestane locatie',
+  'control.outside.body': 'Deze app werkt alleen op %s.',
+  'control.outside.place': 'de toegestane locatie',
+  'control.outside.distance': 'Je bent ongeveer %s ver weg.',
+  'control.noLocation.title': 'Locatie nodig',
+  'control.noLocation.body':
+    'Zet de locatie (GPS) aan, of maak verbinding met de wifi van het kantoor, en probeer opnieuw.',
+  'control.noLocation.permissionBody':
+    'Sta de app toe je locatie te gebruiken, of maak verbinding met de wifi van het kantoor.',
+  'control.mock.title': 'Valse locatie gedetecteerd',
+  'control.mock.body':
+    'Schakel de app uit die je locatie vervalst en probeer opnieuw.',
+  'control.unknown.title': 'Deze app is niet ingesteld',
+  'control.unknown.body': 'Vraag je beheerder om deze app in Odoo in te stellen.',
+  'control.offline.title': 'Server niet bereikbaar',
+  'control.offline.body':
+    'Controleer de internetverbinding. De app gaat weer open zodra de controle lukt.',
+  'control.unsupported.title': 'Niet ondersteund op dit toestel',
+  'control.unsupported.body': 'Deze app werkt alleen op Android-handscanners.',
 };
 
 const translations = { en, nl };

@@ -37,7 +37,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>The camera is used to scan barcodes.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>The app only works at your company's allowed location; your position is checked while the app is open.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

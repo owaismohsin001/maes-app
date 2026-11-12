@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useAppControl } from './src/control/useAppControl';
+import LockScreen from './src/screens/LockScreen';
 import OdooWebViewScreen from './src/screens/OdooWebViewScreen';
 import SplashScreen from './src/screens/SplashScreen';
 
@@ -10,6 +12,10 @@ function App() {
   // Odoo loads behind the splash; the splash stays up until it has.
   const [odooReady, setOdooReady] = useState(false);
   const markOdooReady = useCallback(() => setOdooReady(true), []);
+  // May the app run on this device now (allowed in Odoo, app on, right place)?
+  // Anything but 'allowed' covers Odoo with the lock screen and mutes the scanner.
+  const control = useAppControl();
+  const allowed = control.phase === 'allowed';
 
   return (
     <SafeAreaProvider>
@@ -19,11 +25,18 @@ function App() {
       {/* Odoo loads behind the splash, which fades out only once Odoo is ready. */}
       <View
         style={styles.fill}
-        importantForAccessibility={splashDone ? 'auto' : 'no-hide-descendants'}
-        accessibilityElementsHidden={!splashDone}
+        importantForAccessibility={
+          splashDone && allowed ? 'auto' : 'no-hide-descendants'
+        }
+        accessibilityElementsHidden={!splashDone || !allowed}
       >
-        <OdooWebViewScreen active={splashDone} onReady={markOdooReady} />
+        <OdooWebViewScreen
+          active={splashDone}
+          onReady={markOdooReady}
+          scanEnabled={allowed}
+        />
       </View>
+      {allowed ? null : <LockScreen control={control} />}
       {splashDone ? null : (
         <View style={StyleSheet.absoluteFill}>
           <SplashScreen ready={odooReady} onFinish={finishSplash} />

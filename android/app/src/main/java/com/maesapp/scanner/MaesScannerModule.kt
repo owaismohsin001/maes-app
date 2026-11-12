@@ -1,6 +1,7 @@
 package com.maesapp.scanner
 
 import android.content.Context
+import android.util.Log
 import android.view.KeyEvent
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.LifecycleEventListener
@@ -41,6 +42,25 @@ class MaesScannerModule(reactContext: ReactApplicationContext) :
   override fun stopScan() = engine.stopScan()
 
   override fun feedback() = engine.feedback()
+
+  /** Types [text] + Enter into the Odoo WebView as real key events (see [KeyTyper]). */
+  override fun typeText(text: String, promise: Promise) {
+    val activity = reactApplicationContext.currentActivity
+    if (activity == null || text.isEmpty()) {
+      promise.resolve(false)
+      return
+    }
+    activity.runOnUiThread {
+      val typed =
+          try {
+            KeyTyper.typeInto(activity.window.decorView, text)
+          } catch (t: Throwable) {
+            Log.w(TAG, "Could not type the code into the WebView", t)
+            false
+          }
+      promise.resolve(typed)
+    }
+  }
 
   override fun learnScanKey(promise: Promise) {
     learnRequest.getAndSet(promise)?.reject(E_CANCELLED, "Replaced by a new request")
@@ -112,6 +132,7 @@ class MaesScannerModule(reactContext: ReactApplicationContext) :
 
   companion object {
     const val NAME = NativeMaesScannerSpec.NAME
+    private const val TAG = "MaesScanner"
 
     /** The handheld's side scan button, as the vendor app on the device handles it. */
     private const val DEFAULT_SCAN_KEY_CODE = 290
